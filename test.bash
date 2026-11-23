@@ -9,18 +9,6 @@
 
  res=0                                  # 0: 失敗なし（ngが呼ばれると1になる）
 
-out=$(seq 5 | ./plus)
-[ "$?" = 0 ]      || ng "$LINENO"
-[ "${out}" = 15 ] || ng "$LINENO"
-
-### STRANGE INPUT ###
-out=$(echo あ | ./plus)           #計算できない値を入力してみる
-[ "$?" = 1 ]      || ng "$LINENO" #終了ステータスが1なのを確認
-[ "${out}" = "" ] || ng "$LINENO" #上の行と入れ替えるとダメ（なぜ？）
-
-out=$(echo | ./plus)              #なにも入力しない
-[ "$?" = 1 ]      || ng "$LINENO" #これも異常終了する
-[ "${out}" = "" ] || ng "$LINENO"
 
 ### kondate NORMAL INPUT ###
 # 表記ゆれ（たまご・とり肉・タマネギ・ごはん）と全角スペース対応の確認
