@@ -2,45 +2,124 @@
 # SPDX-FileCopyrightText: 2026 Takehiro Marumo
 # SPDX-License-Identifier: BSD-3-Clause
 
+import argparse
 import sys
 
-# レシピのデータベース（辞書型で持つと簡単）
-RECIPES = {
-    "親子丼": {"鶏肉", "卵", "玉ねぎ"},
-    "肉じゃが": {"牛肉", "じゃがいも", "玉ねぎ", "にんじん"},
-    "オムライス": {"卵", "鶏肉", "玉ねぎ", "ご飯"},
-    "野菜炒め": {"キャベツ", "にんじん", "豚肉"},
-    "目玉焼き": {"卵"},
-    "カレーライス": {"じゃがいも", "にんじん", "玉ねぎ", "肉", "カレールー"},
+# 表記ゆれを統一する変換辞書
+ALIASES = {
+    "たまねぎ": "玉ねぎ",
+    "タマネギ": "玉ねぎ",
+    "とり肉": "鶏肉",
+    "鳥肉": "鶏肉",
+    "ぶた肉": "豚肉",
+    "ぎゅう肉": "牛肉",
+    "にんじん": "にんじん",
+    "ニンジン": "にんじん",
+    "人参": "にんじん",
+    "じゃがいも": "じゃがいも",
+    "ジャガイモ": "じゃがいも",
+    "馬鈴薯": "じゃがいも",
+    "きゃべつ": "キャベツ",
+    "ピーマン": "ピーマン",
+    "ぴーまん": "ピーマン",
+    "たまご": "卵",
+    "タマゴ": "卵",
+    "玉子": "卵",
+    "ごはん": "ご飯",
+    "白米": "ご飯",
+    "米": "ご飯",
+    "カレールウ": "カレールー",
+    "ルー": "カレールー",
+    "とうふ": "豆腐",
+    "トウフ": "豆腐",
+    "もやし": "もやし",
+    "モヤシ": "もやし",
+    "ねぎ": "ねぎ",
+    "ネギ": "ねぎ",
+    "長ねぎ": "ねぎ",
+    "ベーコン": "ベーコン",
+    "ウインナー": "ウインナー",
+    "ソーセージ": "ウインナー",
 }
 
-def main():
-    # 標準入力から材料を読み込む
-    ingredients = set()
-    for line in sys.stdin:
-        item = line.strip()
-        if item:
-            ingredients.add(item)
+# レシピデータベース（15品）
+RECIPES = {
+    "目玉焼き": {"卵"},
+    "卵かけご飯": {"卵", "ご飯"},
+    "親子丼": {"鶏肉", "卵", "玉ねぎ", "ご飯"},
+    "オムライス": {"卵", "鶏肉", "玉ねぎ", "ご飯"},
+    "チャーハン": {"卵", "ご飯", "ねぎ"},
+    "ベーコンエッグ": {"卵", "ベーコン"},
+    "野菜炒め": {"キャベツ", "にんじん", "豚肉"},
+    "豚の生姜焼き": {"豚肉", "玉ねぎ", "キャベツ"},
+    "肉じゃが": {"牛肉", "じゃがいも", "玉ねぎ", "にんじん"},
+    "カレーライス": {"じゃがいも", "にんじん", "玉ねぎ", "豚肉", "カレールー", "ご飯"},
+    "肉野菜もやし炒め": {"豚肉", "もやし", "にんじん"},
+    "麻婆豆腐": {"豆腐", "豚肉", "ねぎ"},
+    "冷奴": {"豆腐", "ねぎ"},
+    "ジャーマンポテト": {"じゃがいも", "玉ねぎ", "ベーコン"},
+    "ポトフ": {"じゃがいも", "にんじん", "玉ねぎ", "ウインナー", "キャベツ"},
+}
 
-    # 材料が何も入力されなかった場合
-    if not ingredients:
-        print("エラー: 材料を標準入力から与えてください", file=sys.stderr)
+
+def normalize(item: str) -> str:
+    """表記ゆれを統一する"""
+    cleaned = item.strip()
+    return ALIASES.get(cleaned, cleaned)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="標準入力で与えられた食材から作れる料理を提案します。"
+    )
+    parser.add_argument(
+        "-m",
+        "--missing",
+        type=int,
+        default=0,
+        help="許容する不足食材の数（デフォルト: 0 = 手持ちだけで作れる料理のみ）",
+    )
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+
+    if args.missing < 0:
+        print("エラー: -m には 0 以上の整数を指定してください", file=sys.stderr)
         sys.exit(1)
 
-    # 手持ちの材料で作れる料理を探す
-    matched = []
-    for dish, req_items in RECIPES.items():
-        # 必要な材料がすべて手持ちに含まれているか
-        if req_items.issubset(ingredients):
-            matched.append(dish)
+    # 標準入力から食材を読み込む
+    ingredients = set()
+    for line in sys.stdin:
+        for token in line.strip().split():
+            if token:
+                ingredients.add(normalize(token))
 
-    # 結果を標準出力に出す
-    if matched:
-        for dish in matched:
+    if not ingredients:
+        print("エラー: 食材を標準入力から与えてください", file=sys.stderr)
+        sys.exit(1)
+
+    # 不足食材の数ごとに分類
+    results = []
+    for dish, req_items in RECIPES.items():
+        missing_items = sorted(req_items - ingredients)
+        if len(missing_items) <= args.missing:
+            results.append((len(missing_items), dish, missing_items))
+
+    # 不足数が少ない順・料理名順でソート
+    results.sort(key=lambda x: (x[0], x[1]))
+
+    if not results:
+        sys.exit(0)
+
+    for miss_count, dish, missing_items in results:
+        if miss_count == 0:
             print(dish)
-    else:
-        # 見つからなかった場合も余計な装飾はせず出力
-        print("該当なし")
+        else:
+            missing_str = ", ".join(missing_items)
+            print(f"{dish} (不足: {missing_str})")
+
 
 if __name__ == "__main__":
     main()
