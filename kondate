@@ -1,0 +1,46 @@
+#!/usr/bin/python3
+# SPDX-FileCopyrightText: 2026 Takehiro Marumo
+# SPDX-License-Identifier: BSD-3-Clause
+
+import sys
+
+# レシピのデータベース（辞書型で持つと簡単）
+RECIPES = {
+    "親子丼": {"鶏肉", "卵", "玉ねぎ"},
+    "肉じゃが": {"牛肉", "じゃがいも", "玉ねぎ", "にんじん"},
+    "オムライス": {"卵", "鶏肉", "玉ねぎ", "ご飯"},
+    "野菜炒め": {"キャベツ", "にんじん", "豚肉"},
+    "目玉焼き": {"卵"},
+    "カレーライス": {"じゃがいも", "にんじん", "玉ねぎ", "肉", "カレールー"},
+}
+
+def main():
+    # 標準入力から材料を読み込む
+    ingredients = set()
+    for line in sys.stdin:
+        item = line.strip()
+        if item:
+            ingredients.add(item)
+
+    # 材料が何も入力されなかった場合
+    if not ingredients:
+        print("エラー: 材料を標準入力から与えてください", file=sys.stderr)
+        sys.exit(1)
+
+    # 手持ちの材料で作れる料理を探す
+    matched = []
+    for dish, req_items in RECIPES.items():
+        # 必要な材料がすべて手持ちに含まれているか
+        if req_items.issubset(ingredients):
+            matched.append(dish)
+
+    # 結果を標準出力に出す
+    if matched:
+        for dish in matched:
+            print(dish)
+    else:
+        # 見つからなかった場合も余計な装飾はせず出力
+        print("該当なし")
+
+if __name__ == "__main__":
+    main()
